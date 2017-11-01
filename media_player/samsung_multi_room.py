@@ -1,6 +1,3 @@
-# https://github.com/macbury/hassio-addons/blob/master/hass/custom_components/media_player/ps4.py
-
-
 import urllib.parse
 import requests
 import logging
@@ -45,16 +42,16 @@ BOOL_ON = 'on'
 
 SUPPORT_SAMSUNG_MULTI_ROOM = SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE
 
+CONF_MAX_VOLUME = 'max_volume'
 CONF_PORT = 'port'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
   vol.Required(CONF_HOST, default='127.0.0.1'): cv.string,
-  vol.Optional(CONF_PORT, default='55001'): cv.string
+  vol.Optional(CONF_PORT, default='55001'): cv.string,
+  vol.Optional(CONF_MAX_VOLUME, default='100'): cv.string
 })
 
 
-# Based on information gathered from
-# https://github.com/bacl/WAM_API_DOC/blob/master/API_Methods.md
 class MultiRoomApi():
   def __init__(self, ip, port):
     self.ip = ip
@@ -109,13 +106,14 @@ class MultiRoomApi():
     return self._exec_set('SetFunc', 'function', source)
 
 class MultiRoomDevice(MediaPlayerDevice):
-  def __init__(self, name, api):
+  def __init__(self, name, max_volume, api):
     self._name = name
     self.api = api
     self._state = STATE_OFF
     self._current_source = None
     self._volume = 0
     self._muted = False
+    self._max_volume = max_volume
     self.update()
 
   @property
@@ -135,7 +133,7 @@ class MultiRoomDevice(MediaPlayerDevice):
     return self._volume
 
   def set_volume_level(self, volume):
-    self.api.set_volume(volume * 100)
+    self.api.set_volume(volume * self._max_volume)
 
   @property
   def source(self):
@@ -162,7 +160,7 @@ class MultiRoomDevice(MediaPlayerDevice):
       if not self._name:
         self._name = self.api.get_speaker_name()
       self._current_source = self.api.get_source()
-      self._volume = self.api.get_volume() / 100.0
+      self._volume = self.api.get_volume() / self._max_volume
       self._state = STATE_IDLE
       self._muted = self.api.get_muted()
     except requests.exceptions.ReadTimeout as e:
@@ -174,8 +172,6 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
   ip = config.get(CONF_HOST)
   port = config.get(CONF_PORT)
   name = config.get(CONF_NAME)
+  max_volume = int(config.get(CONF_MAX_VOLUME))
   api = MultiRoomApi(ip, port)
-  add_devices([MultiRoomDevice(name, api)], True)
-
-#print(MultiRoomApi('192.168.1.227', '55001').get_volume())
-#MultiRoomApi('192.168.1.227', '55001').set_volume(10)
+  add_devices([MultiRoomDevice(name, max_volume, api)], True)

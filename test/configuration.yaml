@@ -28,4 +28,5 @@ media_player:
   - platform: samsung_multi_room
     name: "Soundbar"
     host: 192.168.1.227
+    max_volume: 20
 
