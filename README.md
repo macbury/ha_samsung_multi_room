@@ -1,6 +1,6 @@
 # Samsung Multiroom support for HomeAssistant
 
-Control volume, and source of your multiroom device like Samsung Soundbar K650 using [HomeAssistant](https://home-assistant.io/)
+Control volume, and source of your multiroom device like [Samsung Soundbar K650](https://www.samsung.com/us/televisions-home-theater/home-theater/sound-bars/samsung-hw-k650-soundbar-w-wireless-subwoofer-hw-k650-za/) using [HomeAssistant](https://home-assistant.io/)
 
 # Installation
 
