@@ -1,0 +1,7 @@
+homeassistant:
+  image: homeassistant/home-assistant:0.55.2
+  ports:
+    - 8123:8123
+  volumes:
+    - ./test:/config
+    - .:/config/custom_components/
