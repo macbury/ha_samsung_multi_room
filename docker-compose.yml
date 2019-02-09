@@ -1,5 +1,5 @@
 homeassistant:
-  image: homeassistant/home-assistant:0.55.2
+  image: homeassistant/home-assistant:0.87.0
   ports:
     - 8123:8123
   volumes:
