@@ -1,11 +1,20 @@
 import urllib.parse
-import requests
+import async_timeout
+import aiohttp
+import asyncio
 import logging
 import voluptuous as vol
+import homeassistant.util as util
+
+from datetime import timedelta
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 _LOGGER      = logging.getLogger(__name__)
 REQUIREMENTS = ['xmltodict==0.11.0']
 DEPENDENCIES = ['http']
+
+MIN_TIME_BETWEEN_SCANS = timedelta(seconds=3)
+MIN_TIME_BETWEEN_FORCED_SCANS = timedelta(seconds=1)
 
 from homeassistant.helpers import config_validation as cv
 
@@ -39,7 +48,7 @@ MULTI_ROOM_SOURCE_TYPE = [
 
 BOOL_OFF = 'off'
 BOOL_ON = 'on'
-
+TIMEOUT = 10
 SUPPORT_SAMSUNG_MULTI_ROOM = SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE
 
 CONF_MAX_VOLUME = 'max_volume'
@@ -51,62 +60,71 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
   vol.Optional(CONF_MAX_VOLUME, default='100'): cv.string
 })
 
-
 class MultiRoomApi():
-  def __init__(self, ip, port):
+  def __init__(self, ip, port, session, hass):
+    self.session = session
+    self.hass = hass
     self.ip = ip
     self.port = port
     self.endpoint = 'http://{0}:{1}'.format(ip, port)
 
-  def _exec_cmd(self, cmd, key_to_extract):
+  async def _exec_cmd(self, cmd, key_to_extract):
     import xmltodict
     query = urllib.parse.urlencode({ "cmd": cmd }, quote_via=urllib.parse.quote)
     url = '{0}/UIC?{1}'.format(self.endpoint, query)
 
-    req = requests.get(url, timeout=10)
-    response = xmltodict.parse(req.text)
-    return response['UIC']['response'][key_to_extract]
+    with async_timeout.timeout(TIMEOUT, loop=self.hass.loop):
+      _LOGGER.debug("Executing: {} with cmd: {}".format(url, cmd))
+      response = await self.session.get(url)
+      data = await response.text()
+      _LOGGER.debug(data)
+      response = xmltodict.parse(data)
+      if key_to_extract in response['UIC']['response']:
+        return response['UIC']['response'][key_to_extract]
+      else:
+        return None
 
-  def _exec_get(self, action, key_to_extract):
-    return self._exec_cmd('<name>{0}</name>'.format(action), key_to_extract)
+  async def _exec_get(self, action, key_to_extract):
+    return await self._exec_cmd('<name>{0}</name>'.format(action), key_to_extract)
 
-  def _exec_set(self, action, property_name, value):
+  async def _exec_set(self, action, property_name, value):
     if type(value) is str:
       value_type = 'str'
     else:
       value_type = 'dec'
     cmd = '<name>{0}</name><p type="{3}" name="{1}" val="{2}"/>'.format(action, property_name, value, value_type)
-    return self._exec_cmd(cmd, property_name)
+    return await self._exec_cmd(cmd, property_name)
 
-  def get_main_info(self):
-    return self._exec_get('GetMainInfo')
+  async def get_main_info(self):
+    return await self._exec_get('GetMainInfo')
 
-  def get_volume(self):
-    return int(self._exec_get('GetVolume', 'volume'))
+  async def get_volume(self):
+    return int(await self._exec_get('GetVolume', 'volume'))
 
-  def set_volume(self, volume):
-    return self._exec_set('SetVolume', 'volume', int(volume))
+  async def set_volume(self, volume):
+    return await self._exec_set('SetVolume', 'volume', int(volume))
 
-  def get_speaker_name(self):
-    return self._exec_get('GetSpkName', 'spkname')
+  async def get_speaker_name(self):
+    return await self._exec_get('GetSpkName', 'spkname')
 
-  def get_muted(self):
-    return self._exec_get('GetMute', 'mute') == BOOL_ON
+  async def get_muted(self):
+    return await self._exec_get('GetMute', 'mute') == BOOL_ON
 
-  def set_muted(self, mute):
+  async def set_muted(self, mute):
     if mute:
-      return self._exec_set('SetMute', 'mute', BOOL_ON)  
+      return await self._exec_set('SetMute', 'mute', BOOL_ON)  
     else:
-      return self._exec_set('SetMute', 'mute', BOOL_OFF)  
+      return await self._exec_set('SetMute', 'mute', BOOL_OFF)  
 
-  def get_source(self):
-    return self._exec_get('GetFunc', 'function')
+  async def get_source(self):
+    return await self._exec_get('GetFunc', 'function')
 
-  def set_source(self, source):
-    return self._exec_set('SetFunc', 'function', source)
+  async def set_source(self, source):
+    return await self._exec_set('SetFunc', 'function', source)
 
 class MultiRoomDevice(MediaPlayerDevice):
   def __init__(self, name, max_volume, api):
+    _LOGGER.info('Initializing MultiRoomDevice')
     self._name = name
     self.api = api
     self._state = STATE_OFF
@@ -114,7 +132,6 @@ class MultiRoomDevice(MediaPlayerDevice):
     self._volume = 0
     self._muted = False
     self._max_volume = max_volume
-    self.update()
 
   @property
   def supported_features(self):
@@ -132,8 +149,9 @@ class MultiRoomDevice(MediaPlayerDevice):
   def volume_level(self):
     return self._volume
 
-  def set_volume_level(self, volume):
-    self.api.set_volume(volume * self._max_volume)
+  async def async_set_volume_level(self, volume):
+    await self.api.set_volume(volume * self._max_volume)
+    await self.async_update()
 
   @property
   def source(self):
@@ -143,29 +161,29 @@ class MultiRoomDevice(MediaPlayerDevice):
   def source_list(self):
     return sorted(MULTI_ROOM_SOURCE_TYPE)
 
-  def select_source(self, source):
-    self.api.set_source(source)
+  async def async_select_source(self, source):
+    await self.api.set_source(source)
+    await self.async_update()
 
   @property
   def is_volume_muted(self):
     return self._muted
 
-  def mute_volume(self, mute):
+  async def async_mute_volume(self, mute):
     self._muted = mute
-    self.api.set_muted(self._muted)
+    await self.api.set_muted(self._muted)
+    await self.async_update()
 
-  def update(self):
-    try:
-      _LOGGER.info('Refreshing state...')
-      if not self._name:
-        self._name = self.api.get_speaker_name()
-      self._current_source = self.api.get_source()
-      self._volume = self.api.get_volume() / self._max_volume
-      self._state = STATE_IDLE
-      self._muted = self.api.get_muted()
-    except requests.exceptions.ReadTimeout as e:
+  @util.Throttle(MIN_TIME_BETWEEN_SCANS, MIN_TIME_BETWEEN_FORCED_SCANS)
+  async def async_update(self):
+    _LOGGER.info('Refreshing state...')
+    self._current_source = await self.api.get_source()
+    self._volume = await self.api.get_volume() / self._max_volume
+    self._muted = await self.api.get_muted()
+    if self._current_source:
+      self._state = STATE_PLAYING
+    else:
       self._state = STATE_OFF
-      _LOGGER.error('Epic failure:', e)
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
@@ -173,5 +191,6 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
   port = config.get(CONF_PORT)
   name = config.get(CONF_NAME)
   max_volume = int(config.get(CONF_MAX_VOLUME))
-  api = MultiRoomApi(ip, port)
+  session = async_get_clientsession(hass)
+  api = MultiRoomApi(ip, port, session, hass)
   add_devices([MultiRoomDevice(name, max_volume, api)], True)
