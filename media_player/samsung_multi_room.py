@@ -19,14 +19,17 @@ MIN_TIME_BETWEEN_FORCED_SCANS = timedelta(seconds=1)
 from homeassistant.helpers import config_validation as cv
 
 from homeassistant.components.media_player import (
-  PLATFORM_SCHEMA,
+  MediaPlayerDevice,
+  PLATFORM_SCHEMA
+)
+
+from homeassistant.components.media_player.const import (
   MEDIA_TYPE_CHANNEL,
   SUPPORT_TURN_ON,
   SUPPORT_TURN_OFF,
   SUPPORT_VOLUME_MUTE,
   SUPPORT_SELECT_SOURCE,
   SUPPORT_VOLUME_SET,
-  MediaPlayerDevice
 )
 
 from homeassistant.const import (
@@ -46,6 +49,7 @@ MULTI_ROOM_SOURCE_TYPE = [
   'bt'
 ]
 
+DEFAULT_NAME = 'Samsung Soundbar'
 BOOL_OFF = 'off'
 BOOL_ON = 'on'
 TIMEOUT = 10
@@ -56,6 +60,7 @@ CONF_PORT = 'port'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
   vol.Required(CONF_HOST, default='127.0.0.1'): cv.string,
+  vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
   vol.Optional(CONF_PORT, default='55001'): cv.string,
   vol.Optional(CONF_MAX_VOLUME, default='100'): cv.string
 })
