@@ -4,7 +4,7 @@ Control volume, and source of your multiroom device like [Samsung Soundbar K650]
 
 # Installation
 
-Copy `samsung_multi_room/media_player.py`,`samsung_multi_room/__init__py.py` and `samsung_multi_room/manisfest.json` to `<config>/custom_components/samsung_multi_room/` directory. Then add this to your configuration.yaml
+Copy `samsung_multi_room/media_player.py`,`samsung_multi_room/__init__.py` and `samsung_multi_room/manisfest.json` to `<config>/custom_components/samsung_multi_room/` directory. Then add this to your configuration.yaml
 
 ``` YAML
 media_player:
