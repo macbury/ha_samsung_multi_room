@@ -41,7 +41,7 @@ from homeassistant.const import (
 )
 
 MULTI_ROOM_SOURCE_TYPE = [
-  'ptical',
+  'optical',
   'soundshare',
   'hdmi',
   'wifi',
