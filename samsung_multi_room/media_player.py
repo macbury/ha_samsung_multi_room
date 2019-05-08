@@ -10,8 +10,8 @@ from datetime import timedelta
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 _LOGGER      = logging.getLogger(__name__)
-REQUIREMENTS = ['xmltodict==0.11.0']
-DEPENDENCIES = ['http']
+
+DOMAIN = "samsung_multi_room"
 
 MIN_TIME_BETWEEN_SCANS = timedelta(seconds=3)
 MIN_TIME_BETWEEN_FORCED_SCANS = timedelta(seconds=1)
@@ -41,7 +41,7 @@ from homeassistant.const import (
 )
 
 MULTI_ROOM_SOURCE_TYPE = [
-  'optical',
+  'ptical',
   'soundshare',
   'hdmi',
   'wifi',
@@ -53,7 +53,7 @@ DEFAULT_NAME = 'Samsung Soundbar'
 BOOL_OFF = 'off'
 BOOL_ON = 'on'
 TIMEOUT = 10
-SUPPORT_SAMSUNG_MULTI_ROOM = SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE
+SUPPORT_SAMSUNG_MULTI_ROOM = SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE | SUPPORT_TURN_OFF
 
 CONF_MAX_VOLUME = 'max_volume'
 CONF_PORT = 'port'
@@ -100,6 +100,12 @@ class MultiRoomApi():
     cmd = '<name>{0}</name><p type="{3}" name="{1}" val="{2}"/>'.format(action, property_name, value, value_type)
     return await self._exec_cmd(cmd, property_name)
 
+  async def get_state(self):
+    return int(await self._exec_get('GetPowerStatus', 'powerStatus'))
+
+  async def set_state(self, key):
+    return await self._exec_set('SetPowerStatus', 'powerStatus', key)
+
   async def get_main_info(self):
     return await self._exec_get('GetMainInfo')
 
@@ -117,9 +123,9 @@ class MultiRoomApi():
 
   async def set_muted(self, mute):
     if mute:
-      return await self._exec_set('SetMute', 'mute', BOOL_ON)  
+      return await self._exec_set('SetMute', 'mute', BOOL_ON)
     else:
-      return await self._exec_set('SetMute', 'mute', BOOL_OFF)  
+      return await self._exec_set('SetMute', 'mute', BOOL_OFF)
 
   async def get_source(self):
     return await self._exec_get('GetFunc', 'function')
@@ -179,13 +185,22 @@ class MultiRoomDevice(MediaPlayerDevice):
     await self.api.set_muted(self._muted)
     await self.async_update()
 
+  def turn_off(self):
+      """Turn off media player."""
+      self.api.set_state(0)
+
+  def turn_on(self):
+      """Turn on media player."""
+      self.api.set_state(1)
+
   @util.Throttle(MIN_TIME_BETWEEN_SCANS, MIN_TIME_BETWEEN_FORCED_SCANS)
   async def async_update(self):
     _LOGGER.info('Refreshing state...')
     self._current_source = await self.api.get_source()
     self._volume = await self.api.get_volume() / self._max_volume
     self._muted = await self.api.get_muted()
-    if self._current_source:
+    value = await self.api.get_state()
+    if value == 1:
       self._state = STATE_PLAYING
     else:
       self._state = STATE_OFF

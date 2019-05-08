@@ -1,10 +1,10 @@
 # Samsung Multiroom support for HomeAssistant
 
-Control volume, and source of your multiroom device like [Samsung Soundbar K650](https://www.samsung.com/us/televisions-home-theater/home-theater/sound-bars/samsung-hw-k650-soundbar-w-wireless-subwoofer-hw-k650-za/) using [HomeAssistant](https://home-assistant.io/)
+Control volume, and source of your multiroom device like [Samsung Soundbar K650](https://www.samsung.com/us/televisions-home-theater/home-theater/sound-bars/samsung-hw-k650-soundbar-w-wireless-subwoofer-hw-k650-za/) or [Samsung Soundbar HW-MS650](https://www.samsung.com/us/televisions-home-theater/home-theater/sound-bars/sound--premium-soundbar-hw-ms650-za/) using [HomeAssistant](https://home-assistant.io/)
 
 # Installation
 
-Copy `samsung_multi_room/media_player.py` to `<config>/custom_components/samsung_multi_room` directory. Then add this to your configuration.yaml
+Copy `samsung_multi_room/media_player.py`,`samsung_multi_room/__init__py.py` and `samsung_multi_room/manisfest.json` to `<config>/custom_components/samsung_multi_room/` directory. Then add this to your configuration.yaml
 
 ``` YAML
 media_player:
