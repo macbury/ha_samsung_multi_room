@@ -11,6 +11,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 _LOGGER      = logging.getLogger(__name__)
 
+VERSION = '0.0.1'
+
 DOMAIN = "samsung_multi_room"
 
 MIN_TIME_BETWEEN_SCANS = timedelta(seconds=10)
