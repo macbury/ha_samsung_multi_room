@@ -13,8 +13,8 @@ _LOGGER      = logging.getLogger(__name__)
 
 DOMAIN = "samsung_multi_room"
 
-MIN_TIME_BETWEEN_SCANS = timedelta(seconds=3)
-MIN_TIME_BETWEEN_FORCED_SCANS = timedelta(seconds=1)
+MIN_TIME_BETWEEN_SCANS = timedelta(seconds=10)
+MIN_TIME_BETWEEN_FORCED_SCANS = timedelta(seconds=3)
 
 from homeassistant.helpers import config_validation as cv
 
@@ -123,9 +123,9 @@ class MultiRoomApi():
 
   async def set_muted(self, mute):
     if mute:
-      return await self._exec_set('SetMute', 'mute', BOOL_ON)
+      return await self._exec_set('SetMute', 'mute', BOOL_ON)  
     else:
-      return await self._exec_set('SetMute', 'mute', BOOL_OFF)
+      return await self._exec_set('SetMute', 'mute', BOOL_OFF)  
 
   async def get_source(self):
     return await self._exec_get('GetFunc', 'function')
@@ -185,11 +185,11 @@ class MultiRoomDevice(MediaPlayerDevice):
     await self.api.set_muted(self._muted)
     await self.async_update()
 
-  def turn_off(self):
+  async def turn_off(self):
       """Turn off media player."""
       self.api.set_state(0)
 
-  def turn_on(self):
+  async def turn_on(self):
       """Turn on media player."""
       self.api.set_state(1)
 
@@ -197,13 +197,17 @@ class MultiRoomDevice(MediaPlayerDevice):
   async def async_update(self):
     _LOGGER.info('Refreshing state...')
     self._current_source = await self.api.get_source()
-    self._volume = await self.api.get_volume() / self._max_volume
-    self._muted = await self.api.get_muted()
     value = await self.api.get_state()
     if value == 1:
       self._state = STATE_PLAYING
+      self._volume = await self.api.get_volume() / self._max_volume
+      self._muted = await self.api.get_muted()
     else:
       self._state = STATE_OFF
+#    if self._current_source:
+#      self._state = STATE_PLAYING
+#    else:
+#      self._state = STATE_OFF
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
