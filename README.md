@@ -4,11 +4,11 @@ Control volume, and source of your multiroom device like [Samsung Soundbar K650]
 
 # Installation
 
-HACS
+## HACS
 [HACS (Home Assistant Community Store)](https://custom-components.github.io/hacs/)
 Add the repo: `dariornelas/ha_samsung_multi_room`
 
-Manual
+## Manual
 Copy `samsung_multi_room/media_player.py`,`samsung_multi_room/__init__.py` and `samsung_multi_room/manisfest.json` to `<config>/custom_components/samsung_multi_room/` directory. 
 
 # Configuration 
