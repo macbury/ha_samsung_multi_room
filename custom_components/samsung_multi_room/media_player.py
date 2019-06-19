@@ -9,7 +9,7 @@ import homeassistant.util as util
 from datetime import timedelta
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-_LOGGER      = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 VERSION = '0.0.1'
 
@@ -55,7 +55,7 @@ DEFAULT_NAME = 'Samsung Soundbar'
 BOOL_OFF = 'off'
 BOOL_ON = 'on'
 TIMEOUT = 10
-SUPPORT_SAMSUNG_MULTI_ROOM = SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE | SUPPORT_TURN_OFF
+SUPPORT_SAMSUNG_MULTI_ROOM = SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE | SUPPORT_TURN_OFF | SUPPORT_TURN_ON
 
 CONF_MAX_VOLUME = 'max_volume'
 CONF_PORT = 'port'
@@ -106,7 +106,7 @@ class MultiRoomApi():
     return int(await self._exec_get('GetPowerStatus', 'powerStatus'))
 
   async def set_state(self, key):
-    return await self._exec_set('SetPowerStatus', 'powerStatus', key)
+    return await self._exec_set('SetPowerStatus', 'powerStatus', int(key))
 
   async def get_main_info(self):
     return await self._exec_get('GetMainInfo')
@@ -136,6 +136,7 @@ class MultiRoomApi():
     return await self._exec_set('SetFunc', 'function', source)
 
 class MultiRoomDevice(MediaPlayerDevice):
+  """Representation of a Samsung MultiRoom."""
   def __init__(self, name, max_volume, api):
     _LOGGER.info('Initializing MultiRoomDevice')
     self._name = name
@@ -189,11 +190,11 @@ class MultiRoomDevice(MediaPlayerDevice):
 
   async def turn_off(self):
       """Turn off media player."""
-      self.api.set_state(0)
+      await self.api.set_state(0)
 
   async def turn_on(self):
       """Turn on media player."""
-      self.api.set_state(1)
+      await self.api.set_state(1)
 
   @util.Throttle(MIN_TIME_BETWEEN_SCANS, MIN_TIME_BETWEEN_FORCED_SCANS)
   async def async_update(self):
@@ -206,13 +207,10 @@ class MultiRoomDevice(MediaPlayerDevice):
       self._muted = await self.api.get_muted()
     else:
       self._state = STATE_OFF
-#    if self._current_source:
-#      self._state = STATE_PLAYING
-#    else:
-#      self._state = STATE_OFF
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
+  """Set up the Samsung MultiRoom platform."""
   ip = config.get(CONF_HOST)
   port = config.get(CONF_PORT)
   name = config.get(CONF_NAME)

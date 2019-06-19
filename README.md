@@ -4,13 +4,21 @@ Control volume, and source of your multiroom device like [Samsung Soundbar K650]
 
 # Installation
 
-Copy `samsung_multi_room/media_player.py`,`samsung_multi_room/__init__.py` and `samsung_multi_room/manisfest.json` to `<config>/custom_components/samsung_multi_room/` directory. Then add this to your configuration.yaml
+HACS
+[HACS (Home Assistant Community Store)](https://custom-components.github.io/hacs/)
+Add the repo: `dariornelas/ha_samsung_multi_room`
+
+Manual
+Copy `samsung_multi_room/media_player.py`,`samsung_multi_room/__init__.py` and `samsung_multi_room/manisfest.json` to `<config>/custom_components/samsung_multi_room/` directory. 
+
+# Configuration 
+Add this to your `configuration.yaml`:
 
 ``` YAML
 media_player:
   - platform: samsung_multi_room
     name: "Soundbar" # name, otherwise it will use name of your soundbar
-    host: 192.168.1.227 # ip of your soundbar
+    host: 192.168.1.227 # ip of YOUR soundbar
     max_volume: 20 # on this level glass breaks, and there are 80 levels more on K650...
 ```
 
