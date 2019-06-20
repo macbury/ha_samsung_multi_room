@@ -93,9 +93,9 @@ class MultiRoomApi():
           return None
     except (asyncio.TimeoutError, ValueError):
       _LOGGER.debug("Timeout occured when executing command.")
+      return None
     except OSError:
       _LOGGER.debug("Failed to connect to endpoint.")
-    finally:
       return None
 
   async def _exec_get(self, action, key_to_extract):
@@ -223,7 +223,7 @@ class MultiRoomDevice(MediaPlayerDevice):
     _LOGGER.info('Refreshing state...')
     "Get Power State"
     state = await self.api.get_state()
-    if state == 1:
+    if state and int(state) == 1:
       "If Power is ON, update other values"
       self._state = STATE_PLAYING
       "Get Current Source"
@@ -233,7 +233,7 @@ class MultiRoomDevice(MediaPlayerDevice):
       "Get Volume"
       volume = await self.api.get_volume()
       if volume:
-        self._volume = volume / self._max_volume
+        self._volume = int(volume) / self._max_volume
       "Get Mute State"
       muted = await self.api.get_muted()
       if muted:
