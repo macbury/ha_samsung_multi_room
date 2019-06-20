@@ -47,7 +47,6 @@ MULTI_ROOM_SOURCE_TYPE = [
   'soundshare',
   'hdmi',
   'wifi',
-  'wifi-cp',
   'aux',
   'bt',
   #wifi - submode: dlna, cp
@@ -186,6 +185,16 @@ class MultiRoomDevice(MediaPlayerDevice):
   def name(self):
     """Return the name of the device."""
     return self._name
+
+  @property
+  def media_title(self):
+    """Title of current playing media."""
+    return self._media_title
+
+  @property
+  def media_image_url(self):
+    """Url for image of current playing media."""
+    return self._image_url
 
   @property
   def state(self):
