@@ -98,8 +98,8 @@ class MultiRoomApi():
           else:
             return None
         elif mode == 'CPM':
-          if key_to_extract in response['UIC']['response']:
-            return response['UIC']['response'][key_to_extract]
+          if key_to_extract in response['CPM']['response']:
+            return response['CPM']['response'][key_to_extract]
           else:
             return None
     except (asyncio.TimeoutError, ValueError):
