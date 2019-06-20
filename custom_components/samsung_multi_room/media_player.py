@@ -47,8 +47,10 @@ MULTI_ROOM_SOURCE_TYPE = [
   'soundshare',
   'hdmi',
   'wifi',
+  'wifi-cp',
   'aux',
-  'bt'
+  'bt',
+  #wifi - submode: dlna, cp
 ]
 
 DEFAULT_NAME = 'Samsung Soundbar'
@@ -75,10 +77,13 @@ class MultiRoomApi():
     self.port = port
     self.endpoint = 'http://{0}:{1}'.format(ip, port)
 
-  async def _exec_cmd(self, cmd, key_to_extract):
+  async def _exec_cmd(self, mode ,cmd, key_to_extract):
     import xmltodict
     query = urllib.parse.urlencode({ "cmd": cmd }, quote_via=urllib.parse.quote)
-    url = '{0}/UIC?{1}'.format(self.endpoint, query)
+    if mode == 'UIC':
+      url = '{0}/UIC?{1}'.format(self.endpoint, query)
+    elif mode == 'CPM':
+      url = '{0}/CPM?{1}'.format(self.endpoint, query)
 
     try:
       with async_timeout.timeout(TIMEOUT, loop=self.hass.loop):
@@ -87,10 +92,16 @@ class MultiRoomApi():
         data = await response.text()
         _LOGGER.debug(data)
         response = xmltodict.parse(data)
-        if key_to_extract in response['UIC']['response']:
-          return response['UIC']['response'][key_to_extract]
-        else:
-          return None
+        if mode == 'UIC':
+          if key_to_extract in response['UIC']['response']:
+            return response['UIC']['response'][key_to_extract]
+          else:
+            return None
+        elif mode == 'CPM':
+          if key_to_extract in response['UIC']['response']:
+            return response['UIC']['response'][key_to_extract]
+          else:
+            return None
     except (asyncio.TimeoutError, ValueError):
       _LOGGER.debug("Timeout occured when executing command.")
       return None
@@ -98,49 +109,58 @@ class MultiRoomApi():
       _LOGGER.debug("Failed to connect to endpoint.")
       return None
 
-  async def _exec_get(self, action, key_to_extract):
-    return await self._exec_cmd('<name>{0}</name>'.format(action), key_to_extract)
+  async def _exec_get(self, mode, action, key_to_extract):
+    return await self._exec_cmd(mode, '<name>{0}</name>'.format(action), key_to_extract)
 
-  async def _exec_set(self, action, property_name, value):
+  async def _exec_set(self, mode, action, property_name, value):
     if type(value) is str:
       value_type = 'str'
     else:
       value_type = 'dec'
     cmd = '<name>{0}</name><p type="{3}" name="{1}" val="{2}"/>'.format(action, property_name, value, value_type)
-    return await self._exec_cmd(cmd, property_name)
+    return await self._exec_cmd(mode, cmd, property_name)
 
   async def get_state(self):
-    return await self._exec_get('GetPowerStatus', 'powerStatus')
+    return await self._exec_get('UIC','GetPowerStatus', 'powerStatus')
 
   async def set_state(self, key):
-    await self._exec_set('SetPowerStatus', 'powerStatus', int(key))
+    await self._exec_set('UIC','SetPowerStatus', 'powerStatus', int(key))
 
   async def get_main_info(self):
-    return await self._exec_get('GetMainInfo')
+    return await self._exec_get('UIC','GetMainInfo')
 
   async def get_volume(self):
-    return await self._exec_get('GetVolume', 'volume')
+    return await self._exec_get('UIC','GetVolume', 'volume')
 
   async def set_volume(self, volume):
-    await self._exec_set('SetVolume', 'volume', int(volume))
+    await self._exec_set('UIC','SetVolume', 'volume', int(volume))
 
   async def get_speaker_name(self):
-    return await self._exec_get('GetSpkName', 'spkname')
+    return await self._exec_get('UIC','GetSpkName', 'spkname')
+
+  async def get_radio_info(self):
+    return await self._exec_get('CPM','GetRadioInfo', 'title')
+
+  async def get_radio_image(self):
+    return await self._exec_get('CPM','GetRadioInfo', 'thumbnail')
 
   async def get_muted(self):
-    return await self._exec_get('GetMute', 'mute') == BOOL_ON
+    return await self._exec_get('UIC','GetMute', 'mute') == BOOL_ON
 
   async def set_muted(self, mute):
     if mute:
-      await self._exec_set('SetMute', 'mute', BOOL_ON)  
+      await self._exec_set('UIC','SetMute', 'mute', BOOL_ON)  
     else:
-      await self._exec_set('SetMute', 'mute', BOOL_OFF)  
+      await self._exec_set('UIC','SetMute', 'mute', BOOL_OFF)  
 
   async def get_source(self):
-    return await self._exec_get('GetFunc', 'function')
+    return await self._exec_get('UIC','GetFunc', 'function')
+
+  async def get_mode(self):
+    return await self._exec_get('UIC','GetFunc', 'submode')
 
   async def set_source(self, source):
-    await self._exec_set('SetFunc', 'function', source)
+    await self._exec_set('UIC','SetFunc', 'function', source)
 
 class MultiRoomDevice(MediaPlayerDevice):
   """Representation of a Samsung MultiRoom device."""
@@ -150,7 +170,10 @@ class MultiRoomDevice(MediaPlayerDevice):
     self.api = api
     self._state = STATE_OFF
     self._current_source = None
+    self._media_title = ''
+    self._image_url = ''
     self._volume = 0
+    self._mode = ''
     self._muted = False
     self._max_volume = max_volume
 
@@ -168,6 +191,11 @@ class MultiRoomDevice(MediaPlayerDevice):
   def state(self):
     """Return the state of the device."""
     return self._state
+
+  @property
+  def mode(self):
+    """Return the sub mode of the device."""
+    return self._mode
 
   @property
   def volume_level(self):
@@ -238,6 +266,14 @@ class MultiRoomDevice(MediaPlayerDevice):
       muted = await self.api.get_muted()
       if muted:
         self._muted = muted
+      "Getting current mode"
+      mode = await self.api.get_mode()
+      if mode and str(mode) == 'cp':
+        title = await self.api.get_radio_info()
+        self._media_title = str(title)
+        self._image_url = await self.api.get_radio_image()
+      else:
+        self._media_title = None
     else:
       self._state = STATE_OFF
 
