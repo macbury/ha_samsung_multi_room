@@ -6,6 +6,7 @@ Control volume, and source of your multiroom device like [Samsung Soundbar K650]
 
 ## HACS
 [HACS (Home Assistant Community Store)](https://custom-components.github.io/hacs/)
+
 Add the repo: `dariornelas/ha_samsung_multi_room`
 
 ## Manual

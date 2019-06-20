@@ -80,16 +80,23 @@ class MultiRoomApi():
     query = urllib.parse.urlencode({ "cmd": cmd }, quote_via=urllib.parse.quote)
     url = '{0}/UIC?{1}'.format(self.endpoint, query)
 
-    with async_timeout.timeout(TIMEOUT, loop=self.hass.loop):
-      _LOGGER.debug("Executing: {} with cmd: {}".format(url, cmd))
-      response = await self.session.get(url)
-      data = await response.text()
-      _LOGGER.debug(data)
-      response = xmltodict.parse(data)
-      if key_to_extract in response['UIC']['response']:
-        return response['UIC']['response'][key_to_extract]
-      else:
-        return None
+    try:
+      with async_timeout.timeout(TIMEOUT, loop=self.hass.loop):
+        _LOGGER.debug("Executing: {} with cmd: {}".format(url, cmd))
+        response = await self.session.get(url)
+        data = await response.text()
+        _LOGGER.debug(data)
+        response = xmltodict.parse(data)
+        if key_to_extract in response['UIC']['response']:
+          return response['UIC']['response'][key_to_extract]
+        else:
+          return None
+    except (asyncio.TimeoutError, ValueError):
+      _LOGGER.debug("Timeout occured when executing command.")
+    except OSError:
+      _LOGGER.debug("Failed to connect to endpoint.")
+    finally:
+      return None
 
   async def _exec_get(self, action, key_to_extract):
     return await self._exec_cmd('<name>{0}</name>'.format(action), key_to_extract)
@@ -106,7 +113,7 @@ class MultiRoomApi():
     return int(await self._exec_get('GetPowerStatus', 'powerStatus'))
 
   async def set_state(self, key):
-    return await self._exec_set('SetPowerStatus', 'powerStatus', int(key))
+    await self._exec_set('SetPowerStatus', 'powerStatus', int(key))
 
   async def get_main_info(self):
     return await self._exec_get('GetMainInfo')
@@ -115,7 +122,7 @@ class MultiRoomApi():
     return int(await self._exec_get('GetVolume', 'volume'))
 
   async def set_volume(self, volume):
-    return await self._exec_set('SetVolume', 'volume', int(volume))
+    await self._exec_set('SetVolume', 'volume', int(volume))
 
   async def get_speaker_name(self):
     return await self._exec_get('GetSpkName', 'spkname')
@@ -125,18 +132,18 @@ class MultiRoomApi():
 
   async def set_muted(self, mute):
     if mute:
-      return await self._exec_set('SetMute', 'mute', BOOL_ON)  
+      await self._exec_set('SetMute', 'mute', BOOL_ON)  
     else:
-      return await self._exec_set('SetMute', 'mute', BOOL_OFF)  
+      await self._exec_set('SetMute', 'mute', BOOL_OFF)  
 
   async def get_source(self):
     return await self._exec_get('GetFunc', 'function')
 
   async def set_source(self, source):
-    return await self._exec_set('SetFunc', 'function', source)
+    await self._exec_set('SetFunc', 'function', source)
 
 class MultiRoomDevice(MediaPlayerDevice):
-  """Representation of a Samsung MultiRoom."""
+  """Representation of a Samsung MultiRoom device."""
   def __init__(self, name, max_volume, api):
     _LOGGER.info('Initializing MultiRoomDevice')
     self._name = name
@@ -149,55 +156,70 @@ class MultiRoomDevice(MediaPlayerDevice):
 
   @property
   def supported_features(self):
+    """Flag media player features that are supported."""
     return SUPPORT_SAMSUNG_MULTI_ROOM
 
   @property
   def name(self):
+    """Return the name of the device."""
     return self._name
 
   @property
   def state(self):
+    """Return the state of the device."""
     return self._state
 
   @property
   def volume_level(self):
+    """Return the volume level."""
     return self._volume
 
   async def async_set_volume_level(self, volume):
+    """Sets the volume level."""
     await self.api.set_volume(volume * self._max_volume)
     await self.async_update()
 
   @property
-  def source(self):
-    return self._current_source
-
-  @property
-  def source_list(self):
-    return sorted(MULTI_ROOM_SOURCE_TYPE)
-
-  async def async_select_source(self, source):
-    await self.api.set_source(source)
-    await self.async_update()
-
-  @property
   def is_volume_muted(self):
+    """Boolean if volume is currently muted."""
     return self._muted
 
   async def async_mute_volume(self, mute):
+    """Sets volume mute to true."""
     self._muted = mute
     await self.api.set_muted(self._muted)
     await self.async_update()
 
+  @property
+  def source(self):
+    """Return the current source."""
+    return self._current_source
+
+  @property
+  def source_list(self):
+    """List of available input sources."""
+    return sorted(MULTI_ROOM_SOURCE_TYPE)
+
+  async def async_select_source(self, source):
+    """Select input source."""
+    if source not in MULTI_ROOM_SOURCE_TYPE:
+      _LOGGER.error("Unsupported source")
+      return
+
+    await self.api.set_source(source)
+    await self.async_update()
+
   async def turn_off(self):
-      """Turn off media player."""
+      """Turn the media player off."""
       await self.api.set_state(0)
 
   async def turn_on(self):
-      """Turn on media player."""
+      """Turn the media player on."""
       await self.api.set_state(1)
 
   @util.Throttle(MIN_TIME_BETWEEN_SCANS, MIN_TIME_BETWEEN_FORCED_SCANS)
   async def async_update(self):
+    """Update the media player State."""
     _LOGGER.info('Refreshing state...')
     self._current_source = await self.api.get_source()
     value = await self.api.get_state()
