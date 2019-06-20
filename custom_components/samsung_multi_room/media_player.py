@@ -110,7 +110,7 @@ class MultiRoomApi():
     return await self._exec_cmd(cmd, property_name)
 
   async def get_state(self):
-    return int(await self._exec_get('GetPowerStatus', 'powerStatus'))
+    return await self._exec_get('GetPowerStatus', 'powerStatus')
 
   async def set_state(self, key):
     await self._exec_set('SetPowerStatus', 'powerStatus', int(key))
@@ -119,7 +119,7 @@ class MultiRoomApi():
     return await self._exec_get('GetMainInfo')
 
   async def get_volume(self):
-    return int(await self._exec_get('GetVolume', 'volume'))
+    return await self._exec_get('GetVolume', 'volume')
 
   async def set_volume(self, volume):
     await self._exec_set('SetVolume', 'volume', int(volume))
@@ -221,12 +221,23 @@ class MultiRoomDevice(MediaPlayerDevice):
   async def async_update(self):
     """Update the media player State."""
     _LOGGER.info('Refreshing state...')
-    self._current_source = await self.api.get_source()
-    value = await self.api.get_state()
-    if value == 1:
+    "Get Power State"
+    state = await self.api.get_state()
+    if state == 1:
+      "If Power is ON, update other values"
       self._state = STATE_PLAYING
-      self._volume = await self.api.get_volume() / self._max_volume
-      self._muted = await self.api.get_muted()
+      "Get Current Source"
+      source = await self.api.get_source()
+      if source:
+        self._current_source = source
+      "Get Volume"
+      volume = await self.api.get_volume()
+      if volume:
+        self._volume = volume / self._max_volume
+      "Get Mute State"
+      muted = await self.api.get_muted()
+      if muted:
+        self._muted = muted
     else:
       self._state = STATE_OFF
 
