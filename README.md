@@ -21,6 +21,7 @@ media_player:
     name: "Soundbar" # name, otherwise it will use name of your soundbar
     host: 192.168.1.227 # ip of YOUR soundbar
     max_volume: 20 # on this level glass breaks, and there are 80 levels more on K650...
+    power_options: True # enable/disable power options
 ```
 
 # Sources
