@@ -22,7 +22,7 @@ MIN_TIME_BETWEEN_FORCED_SCANS = timedelta(seconds=3)
 from homeassistant.helpers import config_validation as cv
 
 from homeassistant.components.media_player import (
-  MediaPlayerDevice,
+  MediaPlayerEntity,
   PLATFORM_SCHEMA
 )
 
@@ -182,7 +182,7 @@ class MultiRoomApi():
     else:
       await self._exec_set('UIC','SetFunc', 'function', source)
 
-class MultiRoomDevice(MediaPlayerDevice):
+class MultiRoomDevice(MediaPlayerEntity):
   """Representation of a Samsung MultiRoom device."""
   def __init__(self, name, max_volume, power_options ,api):
     _LOGGER.info('Initializing MultiRoomDevice')
