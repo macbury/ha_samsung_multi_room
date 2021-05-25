@@ -1,8 +1,10 @@
 {
     "domain": "samsung_multi_room",
     "name": "Samsung Multi Room",
+    "version": "1.0.0",
     "documentation": "https://github.com/dariornelas/ha_samsung_multi_room",
     "dependencies": ["http"],
     "codeowners": ["@dariornelas"],
-    "requirements": ["xmltodict==0.11.0"]
+    "requirements": ["xmltodict==0.11.0"],
+    "iot_class": "local_polling"
   }
